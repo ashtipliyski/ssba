@@ -16,11 +16,15 @@
 
 ## Instructions
 
-- `load_word`, encoded as 0x01
-- `store_word`, encoded as 0x02
-- `add`, encoded as 0x03
-- `subtract`, encoded as 0x04
-- `halt`, encoded as 0x05
+```
+load_word    0x01
+store_word   0x02
+add          0x03
+subtract     0x04
+halt         0x05
+
+```
+
 
 ## Problem
 

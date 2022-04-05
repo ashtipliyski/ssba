@@ -15,10 +15,14 @@ def sub(vm, reg1, reg2):
     vm[reg1] = vm[reg1] - vm[reg2]
 
 def print_mem(mem):
-    print("-- memory dump --")
+
+    print("|", end=" ")
     for b in mem:
-        print("0x%x" % b)
-    print("-- ----------- --")
+        print("%02X" % b, end=" ")
+    print("|")
+    
+    # print legend
+    print(f"|{'data and instructions' : ^42}|{'OUT' :^5}|{'IN1' :^5}|{'IN2' :^5} |")
 
 def main():
     vm = [

@@ -9,10 +9,10 @@
 ### Memory
 
 - first 14 bytes are reserved for instructions and arguments
-- bytes 14, 16 and 18 are start of input/output values (two bytes per value, stored in little endian format)
-- OUT - stored in bytes 14 and 15
-- IN1 - stored in bytes 16 and 17
-- IN2 - stored in bytes 16 and 17
+- bytes at positions 14, 16 and 18 are start of input/output values (two bytes per value, stored in little endian format)
+- OUT - stored in bytes at position 14 and 15
+- IN1 - stored in bytes at position 16 and 17
+- IN2 - stored in bytes at position 18 and 19
 
 ## Instructions
 
@@ -21,8 +21,7 @@ load_word    0x01
 store_word   0x02
 add          0x03
 subtract     0x04
-halt         0x05
-
+halt         0xFF
 ```
 
 

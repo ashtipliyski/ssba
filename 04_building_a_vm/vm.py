@@ -9,10 +9,10 @@ def store_word(vm, mem, reg, addr):
     mem[addr + 1] = vm[reg] // 256
 
 def add(vm, reg1, reg2):
-    vm[0x01] = vm[reg1] + vm[reg2]
+    vm[reg1] = vm[reg1] + vm[reg2]
 
 def sub(vm, reg1, reg2):
-    vm[0x01] = vm[reg1] - vm[reg2]
+    vm[reg1] = vm[reg1] - vm[reg2]
 
 def print_mem(mem):
     print("-- memory dump --")

@@ -38,23 +38,24 @@ gint32 get_long_signed(char * buff) {
 
 int main ()
 {
+  short HEAD_SIZE = 24;
   pcap_hdr_t head;
 
   FILE * f = fopen("net.cap", "r");
 
-  unsigned char stuff[24];
-  fgets(stuff, 24, f);
+  unsigned char stuff[HEAD_SIZE + 1];
+  fgets(stuff, HEAD_SIZE+1, f);
 
   // head = (pcap_hdr_t) *stuff;
 
-  printf("-- header bytes start --\n");
-  for (int i = 0; i < 24; i++) {
-     printf("0x%02X\n", stuff[i]);
-    /* unsigned char c = getc(f); */
-    /* stuff[0] = c; */
-    /* printf("0x%02X\n", c); */
-  }
-  printf("-- header bytes end --\n");
+  /* printf("-- header bytes start --\n"); */
+  /* for (int i = 0; i < 24; i++) { */
+  /*    printf("0x%02X\n", stuff[i]); */
+  /*   /\* unsigned char c = getc(f); *\/ */
+  /*   /\* stuff[0] = c; *\/ */
+  /*   /\* printf("0x%02X\n", c); *\/ */
+  /* } */
+  /* printf("-- header bytes end --\n"); */
 
   printf("magic: 0x%08X\n", get_long(&stuff[0]));
   printf("vers (maj): 0x%04X\n", get_short(&stuff[4])); 
@@ -67,14 +68,23 @@ int main ()
   // start a cycle of reading header + packet until EOF
   while (1) {
     short HEADSIZE = 128;
-    unsigned char headbytes[HEADSIZE];
-    fgets(headbytes, HEADSIZE, f);
+    unsigned char headbytes[HEADSIZE + 1]; // array needs and extra char at end for NUL
+    fgets(headbytes, HEADSIZE+1, f); // fgets reads up to N - 1 chars to make space for NUL at end
+
+    printf("0x%X\n", headbytes[HEADSIZE]);
+    for (int i = 0; i < HEADSIZE; i++) {
+      printf("head c = %02x\n", headbytes[i]);
+
+      if (i > 10) break;
+    }
+    
 
     time_t tim = get_long(headbytes);
     // time_t now = time(&now);
     // struct tm * loc_tm = localtime(&now);
     // printf("%lu\n", time);
-    printf("ts_sec: %s\n", asctime(localtime(&tim)));
+    printf("ts time: %s\n", asctime(localtime(&tim)));
+    printf("ts_sec: %X\n", get_long(headbytes));
     printf("ts_usec: %lu\n", get_long(headbytes + 4));
     printf("incl_len: %lu\n", get_long(headbytes + 8));
     printf("orig_len: %lu\n", get_long(headbytes + 12));

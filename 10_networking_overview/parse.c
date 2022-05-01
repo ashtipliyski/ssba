@@ -2,7 +2,7 @@
 
 #include <time.h> 
 #include <glib.h>
-#include <arpa/inet.h>
+#include <stdlib.h> // for sort
 
 typedef struct pcap_hdr_s {
   guint32 magic_number;   /* magic number */
@@ -27,6 +27,20 @@ typedef struct tcp_pck_s {
   guint32 ack_no;
   char data[1500];
 } tcp_pck_t;
+
+// quick sort
+int pckt_comparator(const void *v1, const void *v2)
+{
+  const tcp_pck_t *p1 = (tcp_pck_t *)v1;
+  const tcp_pck_t *p2 = (tcp_pck_t *)v2;
+
+  if (p1->seq_no < p2->seq_no)
+    return -1;
+  else if (p1->seq_no > p2->seq_no)
+    return 1;
+  else
+    return 0;
+}
 
 // reads 16 bits in little endian format
 guint16 get_short (char * buff)
@@ -266,19 +280,55 @@ int main ()
 
     //if (seq_no_rel > 100000)
     //continue;
-    
-    tcp_packets[p] = pck;
+
+    // check to strip the first TCP packet (with seq_no_rel of 0)
+    if (seq_no_rel < 100000) {
+      tcp_packets[p] = pck;
+      p++;
+    }
     // break;
     // if (j > 3) break;
     first = 1;
-    p++;
   }
 
   printf("---\n");
+  qsort(tcp_packets, p, sizeof(tcp_pck_t), pckt_comparator);
+  int skipped = 0;
+  for (int i = 0; i < p; i++) {
+    if (i > 0 && tcp_packets[i].seq_no == tcp_packets[i-1].seq_no) {
+      tcp_packets[i].seq_no = -1;
+      skipped++;
+    }
+  }
+  qsort(tcp_packets, p, sizeof(tcp_pck_t), pckt_comparator);
+  
+  FILE * fout = fopen("out.jpg", "w");
+  int start = 0;
   // sort packets by seq no
   for (int i = 0; i < p; i++) {
-    printf("packet seq no: %10i\tack no: %i\n", tcp_packets[i].seq_no, tcp_packets[i].ack_no);	  
+    if (tcp_packets[i].seq_no == -1)
+      continue;
+    
+    printf("packet seq no: %10i\tack no: %i\n", tcp_packets[i].seq_no, tcp_packets[i].ack_no);
+    // printf("data: %s\n", tcp_packets[i].data);
+    // printf("%s", tcp_packets[i].data);
+    int chars = 0;
+    for (int j = 0; tcp_packets[i].data[j] != '\0'; j++) {
+      chars++;
+      // printf("%02X ", tcp_packets[i].data[j]);
+      
+      if (j > 1 && tcp_packets[i].data[j] == '\r' && tcp_packets[i].data[j-1] == '\n') {
+	printf("--- foundit ---\n");
+	start = 1;
+	continue;
+      }
+      if (start)
+	fwrite(&tcp_packets[i].data[j], sizeof(char), 1, fout);
+    }
+    // fwrite(&tcp_packets[i].data, sizeof(char), chars, fout);
   }
+  printf("\n");
+
   // dump http data to file 
   printf("--- end ---\n");
 }

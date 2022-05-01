@@ -22,6 +22,12 @@ typedef struct pcaprec_hdr_s {
   guint32 orig_len;
 } pcaprec_hdr_t;
 
+typedef struct tcp_pck_s {
+  guint32 seq_no;
+  guint32 ack_no;
+  char data[1500];
+} tcp_pck_t;
+
 // reads 16 bits in little endian format
 guint16 get_short (char * buff)
 {
@@ -36,6 +42,16 @@ guint32 get_long (char * buff)
     (unsigned char) *(buff+1) << 8 |
     (unsigned char) *(buff+2) << 8 * 2 |
     (unsigned char) *(buff+3) << 8 * 3;
+}
+
+// reads 32 bits in big endian format
+guint32 get_long_be (char * buff)
+{
+  return
+    (unsigned char) *(buff) << 8 * 3|
+    (unsigned char) *(buff+1) << 8 * 2 |
+    (unsigned char) *(buff+2) << 8 * 1 |
+    (unsigned char) *(buff+3);
 }
 
 // reads 32 bits and returns them as a signed value
@@ -54,6 +70,7 @@ void print_rec_hdr(struct pcaprec_hdr_s hdr) {
 
 int main ()
 {
+  short first;
   short HEAD_SIZE = 24;
   pcap_hdr_t head;
 
@@ -61,6 +78,9 @@ int main ()
 
   unsigned char stuff[HEAD_SIZE + 1];
   fgets(stuff, HEAD_SIZE+1, f);
+
+  short p = 0;
+  tcp_pck_t tcp_packets [99];
 
   // head = (pcap_hdr_t) *stuff;
 
@@ -80,6 +100,10 @@ int main ()
   printf("sigfig: %lu\n", get_long(&stuff[12]));
   printf("len: %lu\n", get_long(&stuff[16]));
   printf("net: %lu\n", get_long(&stuff[20])); // 1 for ethernet
+
+  // default values for TCP packets
+  unsigned int start_seq = 0;
+  unsigned int start_ack = 0;
 
   // start a cycle of reading header + packet until EOF
   // while (1) {
@@ -125,6 +149,8 @@ int main ()
     // print_rec_hdr(rec_hdr);
     int PAYLOADSIZE = rec_hdr.incl_len;
 
+    short verbose = 0;
+    if (verbose) {
     // generate summary of packet
     printf("> %4d-%02d-%02d %02d:%02d:%02d (%d) ", loc_tm->tm_year + 1900,
 	   loc_tm->tm_mon + 1,
@@ -133,6 +159,7 @@ int main ()
 	   loc_tm->tm_min,
 	   loc_tm->tm_sec, j);
     printf("%d of bytes payload (%d read)\n", rec_hdr.incl_len, rec_hdr.orig_len);
+    }
 
     // ---- parse packet payload ----
     unsigned char data[PAYLOADSIZE + 1];
@@ -173,13 +200,85 @@ int main ()
       continue;
     }
 
-    // unsigned char preamble[8];
     for (int i = ETH_HEAD_SIZE; i < PAYLOADSIZE; i++) {
-      printf("packet payload (%i): %02X\n", i, data[i]);
+      // printf("packet payload (%i): %02X\n", i, data[i]);
     }
 
-    break;
-    if (j > 3) break;
+    /**
+     * IP parsing
+     * - extract source and dest addresses (interested in packets coming from server)
+     * - ignore all but TCP packets (protocol fields)
+     * - need to figure out when payload starts (can be obtained from IHL value)
+     **/
+
+    int src_ip = get_long(&data[ETH_HEAD_SIZE + 12]);
+    int dst_ip = get_long(&data[ETH_HEAD_SIZE + 16]);
+    int ihl = get_short(&data[ETH_HEAD_SIZE]) & 0x0F; // read first octet and mask the lower order bits
+    int prot = data[ETH_HEAD_SIZE + 9];
+    int IP_HEAD_SIZE = ihl * 4; // in bytes (ihl number measures header in 32 bit words)
+
+    /**
+     * Addressing (assumptions):
+     * - client: 0x6500A8C0
+     * - server: 0x9AFC1EC0
+     **/
+
+    if (src_ip != 0x9AFC1EC0)
+      continue;
+
+    // printf("\tip payload: src %X\tdst %X\tIHL %02X\tprot %02X\tpckt size %i\n", src_ip, dst_ip, ihl, prot, PAYLOADSIZE);
+
+    // ---- parsing TCP packet
+    int TCP_START = ETH_HEAD_SIZE + IP_HEAD_SIZE;
+
+    unsigned int TCPHEAD_SIZE = ((data[TCP_START + 12] & 0xF0 ) >> 4) * 4;
+    
+    unsigned int seq_no = get_long_be(&data[TCP_START+4]);
+    unsigned int ack_no = get_long_be(&data[TCP_START+8]);
+    
+    if (first && start_seq == 0) {
+      start_seq = seq_no;
+      start_ack = ack_no;
+    }
+
+    unsigned int seq_no_rel = seq_no - start_seq;
+    unsigned int ack_no_rel = ack_no - start_ack;
+
+    if (seq_no_rel == 0)
+      continue;
+
+    unsigned int HTTPSTART = TCPHEAD_SIZE + TCP_START;
+    for (int i = HTTPSTART; i < PAYLOADSIZE; i++) {
+      // printf("TCP: %02X\n", data[i]);
+    }
+
+    printf("\t\tTCP:\tsrc port %02X\tseq no:%lu\tack no: %lu\tstart seq: %02X\n", data[TCP_START+1], seq_no_rel, ack_no_rel, start_seq);
+
+    // create a new struct and store it in data
+    tcp_pck_t pck;
+    pck.seq_no = seq_no_rel;
+    pck.ack_no = ack_no_rel;
+
+    for (int i = HTTPSTART; i < PAYLOADSIZE; i++) {
+      // printf("storing val %X at %lu from %i\n", data[i], i - HTTPSTART, i);
+      pck.data[i- HTTPSTART] = data[i];
+    }
+
+    //if (seq_no_rel > 100000)
+    //continue;
+    
+    tcp_packets[p] = pck;
+    // break;
+    // if (j > 3) break;
+    first = 1;
+    p++;
   }
+
+  printf("---\n");
+  // sort packets by seq no
+  for (int i = 0; i < p; i++) {
+    printf("packet seq no: %10i\tack no: %i\n", tcp_packets[i].seq_no, tcp_packets[i].ack_no);	  
+  }
+  // dump http data to file 
   printf("--- end ---\n");
 }

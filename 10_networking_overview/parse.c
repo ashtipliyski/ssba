@@ -139,13 +139,47 @@ int main ()
     // fgets(data, PAYLOADSIZE+1, f);
     // char c;
     for (int i = 0; i < PAYLOADSIZE; i++) {
-      c = getc(f); 
-      // printf("%d, %d, %02X\n", PAYLOADSIZE, i, getc(f));
+      //c = getc(f);
+      data[i] = getc(f);
+      // printf("%d, %d, %02X\n", PAYLOADSIZE, i, data[i]);
     }
+    data[PAYLOADSIZE + 1] = 0; // append NUL
 
     // checks if EOF was encountered after reading payload
     if (feof(f))
       break;
+
+    // ---- parse ETH packet
+    short ETH_HEAD_SIZE = 14;
+ 
+    /**
+     * data values 0 - 5 encode source MAC address
+     * data values 6 - 11 encode destination MAC address
+     * data values 12 - 13 encode type of packet in payload (EtherType)
+     *
+     * Ether type values:
+     *
+     * 0x0800 IPv4
+     * 0x0806 ARP packet
+     * 0x86DD IPv6
+     * 0x8100 IEEE 802.1Q tag is present
+     *
+     **/
+
+    // will parse only IP packets
+    if (data[12] != 0x08 || data[13] != 00) {
+      printf("-- non IPv4 packet, skipping\n");
+      // printf("data[12] = %02X, data[13] = %02X\n", data[12], data[13]);
+      continue;
+    }
+
+    // unsigned char preamble[8];
+    for (int i = ETH_HEAD_SIZE; i < PAYLOADSIZE; i++) {
+      printf("packet payload (%i): %02X\n", i, data[i]);
+    }
+
+    break;
+    if (j > 3) break;
   }
   printf("--- end ---\n");
 }

@@ -90,10 +90,13 @@ int main ()
 
     // fgets seems to result in strange contents of headbytes so the individual bytes are
     // read individually
+    char c;
     for (int i = 0; i < HEADSIZE; i++) {
       headbytes[i] = getc(f);
-      if (headbytes[i] == EOF) break;
     }
+    // checks if EOF was encountered after reading header
+    if (feof(f))
+      break;
     headbytes[HEADSIZE+1] = 0; // manually set NUL at end
 
     /*
@@ -104,6 +107,7 @@ int main ()
       // if ((i+i) % 4 == 0 && i != 0) printf("--\n");
     }
     */
+    
 
     time_t tim = get_long(headbytes);
     struct tm * loc_tm = localtime(&tim);
@@ -118,7 +122,7 @@ int main ()
     rec_hdr.orig_len = get_long(headbytes + 12);
 
     //    printf("ts time: %s", ctime((&tim)));
-    print_rec_hdr(rec_hdr);
+    // print_rec_hdr(rec_hdr);
     int PAYLOADSIZE = rec_hdr.incl_len;
 
     // generate summary of packet
@@ -133,11 +137,15 @@ int main ()
     // ---- parse packet payload ----
     unsigned char data[PAYLOADSIZE + 1];
     // fgets(data, PAYLOADSIZE+1, f);
-    for (int i = 0; i < PAYLOADSIZE; i++)
-      printf("%d, %d, %02X\n", PAYLOADSIZE, i, getc(f));
+    // char c;
+    for (int i = 0; i < PAYLOADSIZE; i++) {
+      c = getc(f); 
+      // printf("%d, %d, %02X\n", PAYLOADSIZE, i, getc(f));
+    }
 
-
-    
-    // break;
+    // checks if EOF was encountered after reading payload
+    if (feof(f))
+      break;
   }
+  printf("--- end ---\n");
 }

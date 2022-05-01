@@ -14,6 +14,14 @@ typedef struct pcap_hdr_s {
   guint32 network;        /* data link type */  
 } pcap_hdr_t;
 
+
+typedef struct pcaprec_hdr_s {
+  guint32 ts_sec;
+  guint32 ts_usec;
+  guint32 incl_len;
+  guint32 orig_len;
+} pcaprec_hdr_t;
+
 // reads 16 bits in little endian format
 guint16 get_short (char * buff)
 {
@@ -34,6 +42,14 @@ guint32 get_long (char * buff)
 // TODO: fix implementation of this
 gint32 get_long_signed(char * buff) {
   return (gint32) get_long(buff);
+}
+
+void print_rec_hdr(struct pcaprec_hdr_s hdr) {
+
+  printf("ts_sec: %X\n", hdr.ts_sec);
+  printf("ts_usec: %lu\n", hdr.ts_usec);
+  printf("incl_len: %lu\n", hdr.incl_len);
+  printf("orig_len: %lu\n", hdr.orig_len);
 }
 
 int main ()
@@ -67,7 +83,7 @@ int main ()
 
   // start a cycle of reading header + packet until EOF
   // while (1) {
-  for (int j = 0; j < 10; j++) {
+  for (int j = 0; j < get_long(&stuff[16]); j++) {
     short HEADSIZE = 16;
     unsigned char headbytes[HEADSIZE + 1]; // array needs and extra char at end for NUL
     // fgets(headbytes, HEADSIZE+1, f); // fgets reads up to N - 1 chars to make space for NUL at end
@@ -95,25 +111,33 @@ int main ()
     // struct tm * loc_tm = localtime(&now);
     // printf("%lu\n", time);
 
-    printf("ts time: %s", ctime((&tim)));
-    printf("ts_sec: %X\n", get_long(headbytes));
-    printf("ts_usec: %lu\n", get_long(headbytes + 4));
-    printf("incl_len: %lu\n", get_long(headbytes + 8));
-    printf("orig_len: %lu\n", get_long(headbytes + 12));
-    int PAYLOADSIZE = get_long(headbytes + 8) - HEADSIZE;
+    struct pcaprec_hdr_s rec_hdr; // = malloc(sizeof(pcaprec_hdr_t));
+    rec_hdr.ts_sec = get_long(headbytes);
+    rec_hdr.ts_usec = get_long(headbytes + 4);
+    rec_hdr.incl_len = get_long(headbytes + 8);
+    rec_hdr.orig_len = get_long(headbytes + 12);
+
+    //    printf("ts time: %s", ctime((&tim)));
+    print_rec_hdr(rec_hdr);
+    int PAYLOADSIZE = rec_hdr.incl_len;
 
     // generate summary of packet
-    printf("> %4d-%02d-%02d %02d:%02d:%02d ", loc_tm->tm_year + 1900,
+    printf("> %4d-%02d-%02d %02d:%02d:%02d (%d) ", loc_tm->tm_year + 1900,
 	   loc_tm->tm_mon + 1,
 	   loc_tm->tm_mday,
 	   loc_tm->tm_hour,
 	   loc_tm->tm_min,
-	   loc_tm->tm_sec);
-    printf("%d of bytes payload (%d read)\n", get_long(headbytes + 8), get_long(headbytes + 12));
+	   loc_tm->tm_sec, j);
+    printf("%d of bytes payload (%d read)\n", rec_hdr.incl_len, rec_hdr.orig_len);
 
     // ---- parse packet payload ----
     unsigned char data[PAYLOADSIZE + 1];
-    fgets(data, PAYLOADSIZE+1, f);
+    // fgets(data, PAYLOADSIZE+1, f);
+    for (int i = 0; i < PAYLOADSIZE; i++)
+      printf("%d, %d, %02X\n", PAYLOADSIZE, i, getc(f));
+
+
+    
     // break;
   }
 }

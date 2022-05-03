@@ -52,6 +52,35 @@ uint16_t read_short(char * buff) {
 void encode_dns_head(dns_hdr_t * head, char * buff, short len) {
   // assume that buff is already initialised with sufficient length
 
+  // id
+  *(buff) = hdr->id;
+
+  // flags - first octet: QR + OPTCODE + AA + TC + RD
+  *(buff + 2) =
+    (hdr->flags.qr << 7) |
+    (hdr->flags.optcode << 3) |
+    (hdr->flags.aa << 2) |
+    (hdr->flags.tc << 1) |
+    (hdr->flags.rd);
+
+  // flags - second octet
+  *(buff + 3) =
+    (hdr->flags.ra << 7) |
+    (hdr->flags.z << 4) |
+    (hdr->flags.rcode);
+
+  // qdcount
+  *(buff + 4) = hdr->qdcount;
+
+  // ancount
+  *(buff + 6) = hdr->ancount;
+
+  // nscount
+  *(buff + 8) = hdr->nscount;
+
+  // arcount
+  *(buff + 10) = hdr->arcount;
+
 }
 
 // encode dns question for transmission (struct -> buffer)

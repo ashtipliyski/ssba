@@ -50,13 +50,15 @@ uint16_t read_short(char * buff) {
 }
 
 // encode dns header for transmission (struct -> buffer)
-void encode_dns_head(dns_hdr_t * hdr, char * buff, short len) {
+void encode_dns_head(dns_hdr_t * hdr, char * buff, short len)
+{
   // assume that buff is already initialised with sufficient length
 
   // id
-  *(buff) = hdr->id;
+  *(buff) = (unsigned char) (hdr->id && 0xFF00) >> 8;
+  *(buff + 1) = (unsigned char) (hdr->id && 0x00FF);
 
-  // flags - first octet: QR + OPTCODE + AA + TC + RD
+  // flags - first octet: QR + OPCODE + AA + TC + RD
   *(buff + 2) =
     (hdr->flags.qr << 7) |
     (hdr->flags.optcode << 3) |
@@ -71,21 +73,26 @@ void encode_dns_head(dns_hdr_t * hdr, char * buff, short len) {
     (hdr->flags.rcode);
 
   // qdcount
-  *(buff + 4) = hdr->qdcount;
+  *(buff + 4) = (unsigned char) (hdr->qdcount && 0xFF00) >> 8;
+  *(buff + 5) = (unsigned char) (hdr->qdcount && 0x00FF);
 
   // ancount
-  *(buff + 6) = hdr->ancount;
+  *(buff + 6) = (unsigned char) (hdr->ancount && 0xFF00) >> 8;
+  *(buff + 7) = (unsigned char) (hdr->ancount && 0x00FF);
 
   // nscount
-  *(buff + 8) = hdr->nscount;
+  *(buff + 8) = (unsigned char) (hdr->nscount && 0xFF00) >> 8;
+  *(buff + 9) = (unsigned char) (hdr->ancount && 0x00FF);
 
   // arcount
-  *(buff + 10) = hdr->arcount;
+  *(buff + 10) = (unsigned char) (hdr->arcount && 0xFF00) >> 8;
+  *(buff + 11) = (unsigned char) (hdr->ancount && 0x00FF);
 
 }
 
 // encode dns question for transmission (struct -> buffer)
-void encode_dns_qtn(dns_qtn_t * qtn, char * buff, short len) {
+void encode_dns_qtn(dns_qtn_t * qtn, char * buff)
+{
   // assume that buff has sufficient length to contain question struct
 
   *(buff) = qtn->len;
@@ -104,7 +111,10 @@ void encode_dns_qtn(dns_qtn_t * qtn, char * buff, short len) {
 }
 
 // encode dns message for transmission (struct -> buffer)
-void encode_dns_msg(dns_msg_t * msg, char * buff, short len);
+void encode_dns_msg(dns_msg_t * msg, char * buff)
+{
+  
+}
 
 // decode received dns header (buffer -> struct)
 void decode_dns_head(char * buff, short len, dns_hdr_t * hdr)

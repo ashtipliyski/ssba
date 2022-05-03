@@ -28,8 +28,9 @@ typedef struct dns_hdr_s {
 
 typedef struct dns_qtn_s {
   char * name;
-  uint16_t len;
-  uint16_t class;  
+  uint8_t len;
+  uint16_t class;
+  uint16_t type;
 } dns_qtn_t;
 
 typedef struct dns_msg_s {
@@ -49,7 +50,7 @@ uint16_t read_short(char * buff) {
 }
 
 // encode dns header for transmission (struct -> buffer)
-void encode_dns_head(dns_hdr_t * head, char * buff, short len) {
+void encode_dns_head(dns_hdr_t * hdr, char * buff, short len) {
   // assume that buff is already initialised with sufficient length
 
   // id
@@ -84,7 +85,23 @@ void encode_dns_head(dns_hdr_t * head, char * buff, short len) {
 }
 
 // encode dns question for transmission (struct -> buffer)
-void encode_dns_qtn(dns_qtn_t * qtn, char * buff, short len);
+void encode_dns_qtn(dns_qtn_t * qtn, char * buff, short len) {
+  // assume that buff has sufficient length to contain question struct
+
+  *(buff) = qtn->len;
+
+  // inject request string into buff one char at a time
+  for (int i = 0; i < qtn->len; i++) {
+    *(buff + i) = qtn->name[i];
+  }
+
+  *(buff + qtn->len + 1) = (unsigned char) (qtn->type & 0xFF00) >> 8;
+  *(buff + qtn->len + 2) = (unsigned char) qtn->type & 0x00FF;
+  
+  *(buff + qtn->len + 3) = (unsigned char) (qtn->class & 0xFF00) >> 8;
+  *(buff + qtn->len + 4) = (unsigned char) qtn->class & 0x00FF;
+  
+}
 
 // encode dns message for transmission (struct -> buffer)
 void encode_dns_msg(dns_msg_t * msg, char * buff, short len);

@@ -71,8 +71,20 @@ Note that it is best to use the `postgres` user to interact with the database
 
 ## Import dataset
 
+Setup
+
 - login as postgres user `sudo su - postgres`
 - start psql `psql`
-- create movies database `create table movies (id Serial,title varchar(255),genres varchar(255),primary key (id));`
+
+Import movies 
+
+- create movies table `create table movies (id Serial,title varchar(255),genres varchar(255),primary key (id));`
 - import movies `copy movies from '/home/postgres/ml-20m/movies.csv' delimiter ',' csv header;`
-- 
+
+Import ratings
+o- create movies table `create table ratings (userId smallint, movieId smallint, rating float, timestamp integer);`
+- import movies `copy ratings from '/home/postgres/ml-20m/ratings.csv' delimiter ',' csv header;`
+
+
+
+
